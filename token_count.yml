@@ -1,0 +1,8 @@
+LLama1 Tokens:
+  - SicariusSicariiStuff/Tenebra_30B_Alpha01_FP16
+LLama3 Tokens:
+  - SicariusSicariiStuff/LLAMA-3_8B_Unaligned
+BERT Tokens:
+  - bert-base-uncased
+GPT-2 Tokens:
+  - gpt2

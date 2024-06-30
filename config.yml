@@ -1,0 +1,24 @@
+highlights:
+  - pattern: '^.*?Persona'
+    color: '#00C957'  # Emerald green color code
+    bold: true
+  - pattern: '\*(.+?)\*'  # *THIS*
+    color: red
+  - pattern: '\_(.+?)\_'  # _THIS_
+    color: purple
+  - pattern: '\"(.+?)\"'  # "THIS"
+    color: blue
+#  - pattern: "'(.+?)'"  # 'THIS'   BUGGY! not recommended unless u implement it better
+#    color: brown
+  - pattern: '\bBacon\b'
+    color: green
+  - pattern: '\bKaka\b'
+    color: blue
+text_background_from_yml:
+    color: lightgray
+txtbox_main_size:
+    height: 8
+    width: 150
+txtbox_others_size:
+    height: 5
+    width: 150
