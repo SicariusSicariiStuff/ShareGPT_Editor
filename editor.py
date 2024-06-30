@@ -16,7 +16,11 @@ class JSONTextEditor:
         self.load_config()
         self.load_tokenizers()
 
-        self.token_count_label = tk.Label(self.root, text="Token Counts: ", font=("TkDefaultFont", 14))
+        # Maximize the window
+        self.root.geometry("{0}x{1}+0+0".format(
+            self.root.winfo_screenwidth(), self.root.winfo_screenheight()))
+
+        self.token_count_label = tk.Label(self.root, text="Total Token Counts: ", font=("TkDefaultFont", 14))
         self.token_count_label.pack(side=tk.TOP, pady=10)
 
         self._create_main_frame()
@@ -49,19 +53,16 @@ class JSONTextEditor:
             with open('config.yml', 'w') as file:
                 yaml.dump(self.config, file)
 
-    def open_file(self):
-        file_path = filedialog.askopenfilename(defaultextension=".json",
-                                               filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
-        if file_path:
-            self._load_file(file_path)
-
     def load_tokenizers(self):
-        with open('token_count.yml', 'r') as file:
-            token_config = yaml.safe_load(file)
-        self.tokenizers = {}
-        for name, paths in token_config.items():
-            for path in paths:
-                self.tokenizers[name] = AutoTokenizer.from_pretrained(path)
+        try:
+            with open('token_count.yml', 'r') as file:
+                token_config = yaml.safe_load(file)
+            self.tokenizers = {}
+            for name, paths in token_config.items():
+                for path in paths:
+                    self.tokenizers[name] = AutoTokenizer.from_pretrained(path, add_prefix_space=True)
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Token configuration file not found.")
 
     def _create_main_frame(self):
         self.canvas = tk.Canvas(self.root)
@@ -81,10 +82,6 @@ class JSONTextEditor:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-    def _create_token_count_label(self):
-        self.token_count_label = tk.Label(self.root, text="Token Counts: N/A", font=("TkDefaultFont", 14))
-        self.token_count_label.pack(anchor='n')
-
     def _create_initial_text_boxes(self):
         self._add_text_box("System Prompt", "system", is_main=True)
         self._add_tuplet()
@@ -93,7 +90,7 @@ class JSONTextEditor:
         frame = tk.Frame(self.scrollable_frame)
         frame.pack(expand=1, fill='both', pady=5)
 
-        label_widget = tk.Label(frame, text=f"{label} (Tokens: 0)")
+        label_widget = tk.Label(frame, text=f"{label} (Tokens: )")
         label_widget.pack()
 
         text_background = self.config.get('text_background_from_yml', {}).get('color', 'grey')
@@ -127,6 +124,7 @@ class JSONTextEditor:
             self.text_areas[-2][2].destroy()
             del self.text_areas[-2:]
             self._update_buttons()
+        self.update_all_token_counts()
 
     def _update_buttons(self):
         if hasattr(self, 'button_frame'):
@@ -174,21 +172,40 @@ class JSONTextEditor:
         for i, highlight in enumerate(self.config['highlights']):
             pattern = highlight['pattern']
             color = highlight['color']
+            bold = highlight.get('bold', False)
             tag_name = f"highlight_{i}"
 
             for match in re.finditer(pattern, content):
                 start = text_widget.index(f"1.0 + {match.start()} chars")
                 end = text_widget.index(f"1.0 + {match.end()} chars")
                 text_widget.tag_add(tag_name, start, end)
-                text_widget.tag_config(tag_name, foreground=color)
+                text_widget.tag_config(tag_name, foreground=color, font=("TkDefaultFont", self.font_size, "bold" if bold else "normal"))
 
-        # Count tokens and update the label
-        tokenizer = self.tokenizers.get("default")  # Use appropriate tokenizer key
-        if tokenizer:
+        token_counts = {}
+        for tokenizer_name, tokenizer in self.tokenizers.items():
             tokens = tokenizer.encode(content, add_special_tokens=False)
-            token_count = len(tokens)
-            label_text = label_widget.cget("text").split(" (Tokens: ")[0]
-            label_widget.config(text=f"{label_text} (Tokens: {token_count})")
+            token_counts[tokenizer_name] = len(tokens)
+
+        counts_text = ", ".join(f"{name}: {count}" for name, count in token_counts.items())
+        label_text = label_widget.cget("text").split(" (Tokens:")[0]
+        label_widget.config(text=f"{label_text} (Tokens: {counts_text})")
+
+        self.update_total_token_count()
+
+    def update_all_token_counts(self):
+        for text_area, _, _, label_widget in self.text_areas:
+            self._on_text_change(text_area, label_widget)
+
+    def update_total_token_count(self):
+        total_counts = {name: 0 for name in self.tokenizers.keys()}
+        for text_area, _, _, _ in self.text_areas:
+            content = text_area.get("1.0", tk.END).strip()
+            for tokenizer_name, tokenizer in self.tokenizers.items():
+                tokens = tokenizer.encode(content, add_special_tokens=False)
+                total_counts[tokenizer_name] += len(tokens)
+
+        counts_text = ", ".join(f"{name}: {count}" for name, count in total_counts.items())
+        self.token_count_label.config(text=f"Total Token Counts: {counts_text}")
 
     def new_file(self):
         if self._confirm_discard_changes():
@@ -198,15 +215,16 @@ class JSONTextEditor:
             self._create_initial_text_boxes()
             self.root.title("JSON Text Editor")
             self.current_file_path = None
+            self.update_all_token_counts()
 
     def _confirm_discard_changes(self):
         response = messagebox.askyesnocancel("Confirm", "Do you want to save changes?")
-        if response is None:  # Cancel
+        if response is None:
             return False
-        elif response:  # Yes
+        elif response:
             self.save_file()
             return True
-        else:  # No
+        else:
             return True
 
     def _load_file(self, file_path):
@@ -229,10 +247,17 @@ class JSONTextEditor:
 
             self.root.title(f"JSON Text Editor - {os.path.basename(file_path)}")
             self.current_file_path = file_path
+            self.update_all_token_counts()
         except json.JSONDecodeError:
             messagebox.showerror("Error", "Invalid JSON file.")
         except FileNotFoundError:
             messagebox.showerror("Error", "File not found.")
+
+    def open_file(self):
+        file_path = filedialog.askopenfilename(defaultextension=".json",
+                                               filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if file_path:
+            self._load_file(file_path)
 
     def save_file(self):
         if self.current_file_path:
@@ -269,25 +294,17 @@ class JSONTextEditor:
         self.font_size += 1
         for text_area, _, _, _ in self.text_areas:
             text_area.config(font=("TkDefaultFont", self.font_size))
+        self.update_all_token_counts()
 
     def _decrease_font_size(self):
         if self.font_size > 1:
             self.font_size -= 1
             for text_area, _, _, _ in self.text_areas:
                 text_area.config(font=("TkDefaultFont", self.font_size))
+        self.update_all_token_counts()
 
     def count_tokens(self):
-        total_counts = {}
-        for tokenizer_name, tokenizer in self.tokenizers.items():
-            total_count = 0
-            for text_area, _, _, _ in self.text_areas:
-                content = text_area.get("1.0", tk.END).strip()
-                tokens = tokenizer.encode(content, add_special_tokens=False)
-                total_count += len(tokens)
-            total_counts[tokenizer_name] = total_count
-
-        counts_text = ", ".join(f"{name}: {count}" for name, count in total_counts.items())
-        self.token_count_label.config(text=f"Token Counts: {counts_text}")
+        self.update_all_token_counts()
 
     def _setup_hotkeys(self):
         self.root.bind("<Control-n>", lambda event: self.new_file())
@@ -299,9 +316,10 @@ class JSONTextEditor:
         self.root.bind("<Control-t>", lambda event: self.count_tokens())
         self.root.bind("<y>", lambda event: self._confirm_discard_changes())
         self.root.bind("<n>", lambda event: self.root.quit())
+        # Add CTRL+W shortcut to close the app
+        self.root.bind("<Control-w>", lambda event: self.root.quit())
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = JSONTextEditor(root)
-    root.geometry("600x400")
     root.mainloop()

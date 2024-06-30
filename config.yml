@@ -1,19 +1,23 @@
 highlights:
-  - pattern: '^.*?Persona'
-    color: '#00C957'  # Emerald green color code
+  - pattern: '(.*?)Persona\s*:'
+    color: '#8d09c6'  # HEX color
+    bold: true
+  - pattern: '(.*?)Traits\s*:'
+    color: '#08667f'  # HEX color
+    bold: true
+  - pattern: '(.*?)Kinks\s*:'
+    color: '#cc16e1'  # HEX color
+    bold: true
+  - pattern: (.*?)\$Scenario\s*=\s*
+    color: '#097809'  # HEX color
     bold: true
   - pattern: '\*(.+?)\*'  # *THIS*
     color: red
-  - pattern: '\_(.+?)\_'  # _THIS_
+  - pattern: '\_(.+?)\_'  # *THIS*
     color: purple
   - pattern: '\"(.+?)\"'  # "THIS"
     color: blue
-#  - pattern: "'(.+?)'"  # 'THIS'   BUGGY! not recommended unless u implement it better
-#    color: brown
-  - pattern: '\bBacon\b'
-    color: green
-  - pattern: '\bKaka\b'
-    color: blue
+
 text_background_from_yml:
     color: lightgray
 txtbox_main_size:
