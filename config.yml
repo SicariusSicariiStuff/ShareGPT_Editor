@@ -17,6 +17,12 @@ highlights:
     color: purple
   - pattern: '\"(.+?)\"'  # "THIS"
     color: blue
+  - pattern: '(?s)```(.*?)```'  # ```THIS``` (matches across multiple lines)
+    color: '#155909'  # Choose your desired color
+    bold: true
+  - pattern: '\*\*(.+?)\*\*'  # **THIS**
+    color: green
+    bold: true
 
 text_background_from_yml:
     color: lightgray
