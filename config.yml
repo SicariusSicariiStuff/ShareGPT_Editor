@@ -27,8 +27,21 @@ highlights:
 text_background_from_yml:
     color: lightgray
 txtbox_main_size:
-    height: 8
+    height: 1
     width: 150
 txtbox_others_size:
-    height: 5
+    height: 16
     width: 150
+textbox_configs:
+  - role: system
+    height: 8
+    width: 150
+    background: lightgrey
+  - role: human
+    height: 4
+    width: 150
+    background: lightblue
+  - role: gpt
+    height: 4
+    width: 150
+    background: lightgreen
